@@ -39,7 +39,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException
 from starlette.middleware import cors
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import JSONResponse, Response, StreamingResponse
+from starlette.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from starlette.staticfiles import StaticFiles
 
 from reflex import constants
@@ -625,7 +625,7 @@ class App(MiddlewareMixin, LifespanMixin):
         """
         from reflex.vars.base import GLOBAL_CACHE
 
-        self._compile(prerender_routes=is_prod_mode())
+        self._compile(prerender_routes=False)  # Disabled prerendering to fix dynamic routes
 
         config = get_config()
 
@@ -713,6 +713,39 @@ class App(MiddlewareMixin, LifespanMixin):
             )
         if environment.REFLEX_ADD_ALL_ROUTES_ENDPOINT.get():
             self.add_all_routes_endpoint()
+
+        # Add static file serving for production mode
+        if is_prod_mode():
+            build_dir = Path.cwd() / ".web" / "build" / "client" / "pas-lab"
+            if build_dir.exists():
+                console.debug(f"DEBUG: Mounting static files from {build_dir}")
+
+                # Mount static assets
+                self._api.mount(
+                    "/pas-lab/assets",
+                    StaticFiles(directory=build_dir / "assets"),
+                    name="static_assets",
+                )
+
+                # Add catch-all route for SPA
+                async def serve_spa(_request: Request) -> Response:
+                    """Serve the SPA fallback for all unmatched routes."""
+                    spa_file = build_dir / "__spa-fallback.html"
+                    if not spa_file.exists():
+                        spa_file = build_dir / "index.html"
+
+                    console.debug(f"DEBUG: Serving SPA fallback for {_request.url.path}")
+
+                    if spa_file.exists():
+                        return HTMLResponse(spa_file.read_text())
+                    return Response("Not Found", status_code=404)
+
+                # Add catch-all route LAST (lowest priority)
+                self._api.add_route(
+                    "/pas-lab/{path:path}",
+                    serve_spa,
+                    methods=["GET"],
+                )
 
     @staticmethod
     def _add_cors(api: Starlette):
@@ -891,7 +924,17 @@ class App(MiddlewareMixin, LifespanMixin):
         """
         from reflex.route import get_router
 
-        return get_router(list(dict.fromkeys([*self._unevaluated_pages, *self._pages])))
+        routes = list(dict.fromkeys([*self._unevaluated_pages, *self._pages]))
+        console.debug(f"DEBUG ROUTER: Available routes: {routes}")
+
+        original_router = get_router(routes)
+
+        def debug_router(path: str) -> str | None:
+            result = original_router(path)
+            console.debug(f"DEBUG ROUTER: path='{path}' -> route='{result}'")
+            return result
+
+        return debug_router
 
     def get_load_events(self, path: str) -> list[IndividualEventType[()]]:
         """Get the load events for a route.
