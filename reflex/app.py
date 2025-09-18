@@ -478,8 +478,28 @@ class App(MiddlewareMixin, LifespanMixin):
         if "breakpoints" in self.style:
             set_breakpoints(self.style.pop("breakpoints"))
 
+
+        class RequestLoggerMiddleware:
+          def __init__(self, app):
+            self.app = app
+
+          async def __call__(self, scope, receive, send):
+              if scope["type"] == "http":
+                  try:
+                      print(f"DEBUG REQUEST: {scope['method']} {scope['path']}")
+                      print(f"DEBUG QUERY: {scope.get('query_string', b'').decode()}")
+                      print(f"DEBUG HEADERS:")
+                      for name, value in scope.get("headers", []):
+                          print(f"  {name.decode()}: {value.decode()}")
+                      print("---")
+                  except Exception as e:
+                      print(f"Error logging request: {e}")
+              await self.app(scope, receive, send)
+
         # Set up the API.
         self._api = Starlette()
+        self._api.router.redirect_slashes = False
+        self._api.add_middleware(RequestLoggerMiddleware)
         App._add_cors(self._api)
         self._add_default_endpoints()
 
@@ -525,12 +545,8 @@ class App(MiddlewareMixin, LifespanMixin):
         if not self.sio:
             self.sio = AsyncServer(
                 async_mode="asgi",
-                cors_allowed_origins=(
-                    "*"
-                    if config.cors_allowed_origins == ("*",)
-                    else list(config.cors_allowed_origins)
-                ),
-                cors_credentials=True,
+                cors_allowed_origins=[],  # Disable Socket.IO CORS, let Starlette handle it
+                cors_credentials=False,
                 max_http_buffer_size=environment.REFLEX_SOCKET_MAX_HTTP_BUFFER_SIZE.get(),
                 ping_interval=environment.REFLEX_SOCKET_INTERVAL.get(),
                 ping_timeout=environment.REFLEX_SOCKET_TIMEOUT.get(),
@@ -538,7 +554,9 @@ class App(MiddlewareMixin, LifespanMixin):
                     dumps=staticmethod(format.json_dumps),
                     loads=staticmethod(json.loads),
                 ),
-                transports=["websocket"],
+                transports=["polling"],
+                logger=True,
+                engineio_logger=False,
             )
         elif getattr(self.sio, "async_mode", "") != "asgi":
             msg = f"Custom `sio` must use `async_mode='asgi'`, not '{self.sio.async_mode}'."
@@ -546,16 +564,16 @@ class App(MiddlewareMixin, LifespanMixin):
 
         # Create the socket app. Note event endpoint constant replaces the default 'socket.io' path.
         socket_app = EngineIOApp(self.sio, socketio_path="")
-        namespace = config.get_event_namespace()
+        namespace = '/' #config.get_event_namespace()
 
         # Create the event namespace and attach the main app. Not related to any paths.
         self._event_namespace = EventNamespace(namespace, self)
+        print(f"DEBUG: Registering namespace: '{namespace}'")
 
         # Register the event namespace with the socket.
         self.sio.register_namespace(self.event_namespace)
         # Mount the socket app with the API.
         if self._api:
-
             class HeaderMiddleware:
                 def __init__(self, app: ASGIApp):
                     self.app = app
@@ -582,7 +600,8 @@ class App(MiddlewareMixin, LifespanMixin):
                     return await self.app(scope, receive, modified_send)
 
             socket_app_with_headers = HeaderMiddleware(socket_app)
-            self._api.mount(str(constants.Endpoint.EVENT), socket_app_with_headers)
+            self._api.mount('/pas-lab-be' + str(constants.Endpoint.EVENT) + '/', socket_app_with_headers)
+            #self._api.mount(str(constants.Endpoint.EVENT) + '/', socket_app_with_headers)
 
         # Check the exception handlers
         self._validate_exception_handlers()
@@ -2077,6 +2096,7 @@ class EventNamespace(AsyncNamespace):
             console.warn(f"Attempting to send delta to disconnected websocket {sid}")
             return
         # Creating a task prevents the update from being blocked behind other coroutines.
+        #print(f"DEBUG: Sending update to sid {sid}: {update}")
         await asyncio.create_task(
             self.emit(str(constants.SocketEvent.EVENT), update, to=sid),
             name=f"reflex_emit_event|{token}|{sid}|{time.time()}",
@@ -2095,6 +2115,7 @@ class EventNamespace(AsyncNamespace):
         Raises:
             EventDeserializationError: If the event data is not a dictionary.
         """
+        #print(f"DEBUG: Received event from sid {sid}: {data}")
         fields = data
 
         if isinstance(fields, str):
