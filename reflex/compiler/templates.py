@@ -549,7 +549,6 @@ function fullReload() {{
 }}
 
 export default defineConfig((config) => ({{
-  base: "/pas-lab/",
   plugins: [
     alwaysUseReactDomServerNode(),
     reactRouter(),
