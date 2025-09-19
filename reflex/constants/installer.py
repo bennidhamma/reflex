@@ -106,7 +106,7 @@ class PackageJson(SimpleNamespace):
 
         DEV = "react-router dev --host"
         EXPORT = "react-router build"
-        PROD = "sirv ./build/client --single 404.html --host"
+        PROD = "sirv ./build/client --dev --single ./pas-lab/404.html --host"
 
     PATH = "package.json"
 
