@@ -891,17 +891,7 @@ class App(MiddlewareMixin, LifespanMixin):
         """
         from reflex.route import get_router
 
-        routes = list(dict.fromkeys([*self._unevaluated_pages, *self._pages]))
-        console.debug(f"DEBUG ROUTER: Available routes: {routes}")
-
-        original_router = get_router(routes)
-
-        def debug_router(path: str) -> str | None:
-            result = original_router(path)
-            console.debug(f"DEBUG ROUTER: path='{path}' -> route='{result}'")
-            return result
-
-        return debug_router
+        return get_router(list(dict.fromkeys([*self._unevaluated_pages, *self._pages])))
 
     def get_load_events(self, path: str) -> list[IndividualEventType[()]]:
         """Get the load events for a route.
