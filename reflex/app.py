@@ -625,7 +625,7 @@ class App(MiddlewareMixin, LifespanMixin):
         """
         from reflex.vars.base import GLOBAL_CACHE
 
-        self._compile(prerender_routes=True)
+        self._compile(prerender_routes=is_prod_mode())
 
         config = get_config()
 
