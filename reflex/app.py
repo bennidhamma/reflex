@@ -625,7 +625,7 @@ class App(MiddlewareMixin, LifespanMixin):
         """
         from reflex.vars.base import GLOBAL_CACHE
 
-        self._compile(prerender_routes=False)  # Disabled prerendering to fix dynamic routes
+        self._compile(prerender_routes=True)
 
         config = get_config()
 
