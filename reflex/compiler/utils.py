@@ -416,16 +416,15 @@ def create_document_root(
         *maybe_head_components,
         *always_head_components,
     ]
-    return Html.create(
-        Head.create(*head_components),
-        Body.create(
+    # return Html.create(
+    return Body.create(
+            *head_components,
             Var("children"),
             ScrollRestoration.create(),
             Scripts.create(),
-        ),
-        lang=html_lang or "en",
-        custom_attrs=html_custom_attrs or {},
-    )
+        )
+        #lang=html_lang or "en",
+        #custom_attrs=html_custom_attrs or {}
 
 
 def create_theme(style: ComponentStyle) -> dict:

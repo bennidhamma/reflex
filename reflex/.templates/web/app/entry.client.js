@@ -4,5 +4,5 @@ import { HydratedRouter } from "react-router/dom";
 import { createElement } from "react";
 
 startTransition(() => {
-  hydrateRoot(document, createElement(HydratedRouter));
+  hydrateRoot(document.getElementById('sc-content-container') || document, createElement(HydratedRouter));
 });
