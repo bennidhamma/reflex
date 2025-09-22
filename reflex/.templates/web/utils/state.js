@@ -526,7 +526,7 @@ export const connect = async (
   const endpoint = getBackendURL(EVENTURL);
 
   // Create the socket.
-    const url = new URL(endpoint.href);
+  const url = new URL(endpoint.href);
   const baseUrl = `${url.protocol}//${url.host}`;
   socket.current = io(baseUrl, {
     path: '/pas-lab-be/_event',

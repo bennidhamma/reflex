@@ -39,7 +39,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException
 from starlette.middleware import cors
 from starlette.requests import ClientDisconnect, Request
-from starlette.responses import JSONResponse, Response, StreamingResponse
+from starlette.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
 from starlette.staticfiles import StaticFiles
 
 from reflex import constants
