@@ -499,7 +499,7 @@ class App(MiddlewareMixin, LifespanMixin):
         # Set up the API.
         self._api = Starlette()
         self._api.router.redirect_slashes = False
-        self._api.add_middleware(RequestLoggerMiddleware)
+        # self._api.add_middleware(RequestLoggerMiddleware)
         App._add_cors(self._api)
         self._add_default_endpoints()
 
