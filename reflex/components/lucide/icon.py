@@ -6,7 +6,7 @@ from reflex.utils.imports import ImportVar
 from reflex.vars.base import LiteralVar, Var
 from reflex.vars.sequence import LiteralStringVar, StringVar
 
-LUCIDE_LIBRARY = "lucide-react@0.543.0"
+LUCIDE_LIBRARY = "lucide-react@0.552.0"
 
 
 class LucideIconComponent(Component):
@@ -96,13 +96,13 @@ class DynamicIcon(LucideIconComponent):
     size: Var[int]
 
     def _get_imports(self):
-        _imports = super()._get_imports()
+        imports_ = super()._get_imports()
         if self.library:
-            _imports.pop(self.library)
-        _imports[LUCIDE_LIBRARY] = [
+            imports_.pop(self.library)
+        imports_[LUCIDE_LIBRARY] = [
             ImportVar("DynamicIcon", package_path="/dynamic.mjs")
         ]
-        return _imports
+        return imports_
 
 
 LUCIDE_ICON_LIST = [
@@ -286,6 +286,7 @@ LUCIDE_ICON_LIST = [
     "binoculars",
     "biohazard",
     "bird",
+    "birdhouse",
     "bitcoin",
     "blend",
     "blinds",
@@ -532,6 +533,7 @@ LUCIDE_ICON_LIST = [
     "clock_alert",
     "clock_arrow_down",
     "clock_arrow_up",
+    "clock_check",
     "clock_fading",
     "clock_plus",
     "clock",
@@ -674,6 +676,7 @@ LUCIDE_ICON_LIST = [
     "eraser",
     "ethernet_port",
     "euro",
+    "ev_charger",
     "expand",
     "external_link",
     "eye_closed",
@@ -827,6 +830,7 @@ LUCIDE_ICON_LIST = [
     "gallery_vertical_end",
     "gallery_vertical",
     "gamepad_2",
+    "gamepad_directional",
     "gamepad",
     "gantt_chart",
     "gauge",
@@ -835,6 +839,7 @@ LUCIDE_ICON_LIST = [
     "georgian_lari",
     "ghost",
     "gift",
+    "git_branch_minus",
     "git_branch_plus",
     "git_branch",
     "git_commit_horizontal",
@@ -912,6 +917,7 @@ LUCIDE_ICON_LIST = [
     "heart_pulse",
     "heart",
     "heater",
+    "helicopter",
     "hexagon",
     "highlighter",
     "history",
@@ -1114,6 +1120,7 @@ LUCIDE_ICON_LIST = [
     "minimize",
     "minus",
     "monitor_check",
+    "monitor_cloud",
     "monitor_cog",
     "monitor_dot",
     "monitor_down",
@@ -1128,6 +1135,7 @@ LUCIDE_ICON_LIST = [
     "monitor",
     "moon_star",
     "moon",
+    "motorbike",
     "mountain_snow",
     "mountain",
     "mouse_off",
@@ -1455,6 +1463,7 @@ LUCIDE_ICON_LIST = [
     "snowflake",
     "soap_dispenser_droplet",
     "sofa",
+    "solar_panel",
     "soup",
     "space",
     "spade",

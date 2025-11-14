@@ -11,13 +11,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from reflex.constants.state import FIELD_MARKER
-from reflex.state import (
-    State,
-    StateManagerDisk,
-    StateManagerMemory,
-    StateManagerRedis,
-    _substate_key,
-)
+from reflex.istate.manager.disk import StateManagerDisk
+from reflex.istate.manager.memory import StateManagerMemory
+from reflex.istate.manager.redis import StateManagerRedis
+from reflex.state import State, _substate_key
 from reflex.testing import AppHarness
 
 from . import utils
@@ -354,12 +351,15 @@ async def test_client_side_state(
     set_sub_sub("s1s", "s1s value")
 
     state_name = client_side.get_full_state_name(["_client_side_state"])
-    sub_state_name = client_side.get_full_state_name(
-        ["_client_side_state", "_client_side_sub_state"]
-    )
-    sub_sub_state_name = client_side.get_full_state_name(
-        ["_client_side_state", "_client_side_sub_state", "_client_side_sub_sub_state"]
-    )
+    sub_state_name = client_side.get_full_state_name([
+        "_client_side_state",
+        "_client_side_sub_state",
+    ])
+    sub_sub_state_name = client_side.get_full_state_name([
+        "_client_side_state",
+        "_client_side_sub_state",
+        "_client_side_sub_sub_state",
+    ])
 
     exp_cookies = {
         f"{sub_state_name}.c1" + FIELD_MARKER: {
@@ -653,9 +653,18 @@ async def test_client_side_state(
         )
     elif isinstance(client_side.state_manager, (StateManagerMemory, StateManagerDisk)):
         del client_side.state_manager.states[token]
-    if isinstance(client_side.state_manager, StateManagerDisk):
-        client_side.state_manager.token_expiration = 0
-        client_side.state_manager._purge_expired_states()
+    if (
+        client_side.app_instance is not None
+        and (app_state_manager := client_side.app_instance.state_manager) is not None
+        and isinstance(app_state_manager, StateManagerDisk)
+    ):
+        # Purge the backend's disk manager
+        app_state_manager.states.pop(token, None)
+        app_state_manager._write_queue.pop(token, None)
+        og_token_expiration = app_state_manager.token_expiration
+        app_state_manager.token_expiration = 0
+        app_state_manager._purge_expired_states()
+        app_state_manager.token_expiration = og_token_expiration
 
     # Ensure the state is gone (not hydrated)
     async def poll_for_not_hydrated():
@@ -784,8 +793,7 @@ async def test_client_side_state(
     assert l1s.text == ""
 
 
-@pytest.mark.asyncio
-async def test_json_cookie_values(
+def test_json_cookie_values(
     client_side: AppHarness,
     driver: WebDriver,
 ):

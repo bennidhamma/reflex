@@ -10,6 +10,8 @@ from reflex.testing import AppHarness
 
 from .utils import SessionStorage
 
+pytest.importorskip("fastapi")
+
 
 def LifespanApp(
     mount_cached_fastapi: bool = False, mount_api_transformer: bool = False
@@ -29,7 +31,7 @@ def LifespanApp(
     lifespan_context_global = 0
 
     @asynccontextmanager
-    async def lifespan_context(app, inc: int = 1):
+    async def lifespan_context(app, inc: int = 1):  # noqa: RUF029
         global lifespan_context_global
         print(f"Lifespan context entered: {app}.")
         lifespan_context_global += inc  # pyright: ignore[reportUnboundVariable]
@@ -150,8 +152,7 @@ def lifespan_app(
         yield harness
 
 
-@pytest.mark.asyncio
-async def test_lifespan(lifespan_app: AppHarness):
+def test_lifespan(lifespan_app: AppHarness):
     """Test the lifespan integration.
 
     Args:

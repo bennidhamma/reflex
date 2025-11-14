@@ -17,6 +17,7 @@ from typing import (
     Annotated,
     Any,
     Generic,
+    Literal,
     TypeVar,
     get_args,
     get_origin,
@@ -24,6 +25,7 @@ from typing import (
 )
 
 from reflex import constants
+from reflex.constants.base import LogLevel
 from reflex.plugins import Plugin
 from reflex.utils.exceptions import EnvironmentVarValueError
 from reflex.utils.types import GenericType, is_union, value_inside_optional
@@ -91,6 +93,26 @@ def interpret_int_env(value: str, field_name: str) -> int:
         return int(value)
     except ValueError as ve:
         msg = f"Invalid integer value: {value!r} for {field_name}"
+        raise EnvironmentVarValueError(msg) from ve
+
+
+def interpret_float_env(value: str, field_name: str) -> float:
+    """Interpret a float environment variable value.
+
+    Args:
+        value: The environment variable value.
+        field_name: The field name.
+
+    Returns:
+        The interpreted value.
+
+    Raises:
+        EnvironmentVarValueError: If the value is invalid.
+    """
+    try:
+        return float(value)
+    except ValueError as ve:
+        msg = f"Invalid float value: {value!r} for {field_name}"
         raise EnvironmentVarValueError(msg) from ve
 
 
@@ -204,7 +226,8 @@ def interpret_env_var_value(
         The interpreted value.
 
     Raises:
-        ValueError: If the environment variable type is invalid.
+        ValueError: If the value is invalid.
+        EnvironmentVarValueError: If the value is invalid for the specific type.
     """
     field_type = value_inside_optional(field_type)
 
@@ -218,14 +241,43 @@ def interpret_env_var_value(
         return interpret_boolean_env(value, field_name)
     if field_type is str:
         return value
+    if field_type is LogLevel:
+        loglevel = LogLevel.from_string(value)
+        if loglevel is None:
+            msg = f"Invalid log level value: {value} for {field_name}"
+            raise EnvironmentVarValueError(msg)
+        return loglevel
     if field_type is int:
         return interpret_int_env(value, field_name)
+    if field_type is float:
+        return interpret_float_env(value, field_name)
     if field_type is Path:
         return interpret_path_env(value, field_name)
     if field_type is ExistingPath:
         return interpret_existing_path_env(value, field_name)
     if field_type is Plugin:
         return interpret_plugin_env(value, field_name)
+    if get_origin(field_type) is Literal:
+        literal_values = get_args(field_type)
+        for literal_value in literal_values:
+            if isinstance(literal_value, str) and literal_value == value:
+                return literal_value
+            if isinstance(literal_value, bool):
+                try:
+                    interpreted_bool = interpret_boolean_env(value, field_name)
+                    if interpreted_bool == literal_value:
+                        return interpreted_bool
+                except EnvironmentVarValueError:
+                    continue
+            if isinstance(literal_value, int):
+                try:
+                    interpreted_int = interpret_int_env(value, field_name)
+                    if interpreted_int == literal_value:
+                        return interpreted_int
+                except EnvironmentVarValueError:
+                    continue
+        msg = f"Invalid literal value: {value!r} for {field_name}, expected one of {literal_values}"
+        raise EnvironmentVarValueError(msg)
     if get_origin(field_type) in (list, Sequence):
         return [
             interpret_env_var_value(
@@ -657,6 +709,30 @@ class EnvironmentVariables:
     # Whether to force a full reload on changes.
     VITE_FORCE_FULL_RELOAD: EnvVar[bool] = env_var(False)
 
+    # Whether to enable Rolldown's experimental HMR.
+    VITE_EXPERIMENTAL_HMR: EnvVar[bool] = env_var(False)
+
+    # Whether to generate sourcemaps for the frontend.
+    VITE_SOURCEMAP: EnvVar[Literal[False, True, "inline", "hidden"]] = env_var(False)  # noqa: RUF038
+
+    # Whether to enable SSR for the frontend.
+    REFLEX_SSR: EnvVar[bool] = env_var(True)
+
+    # Whether to mount the compiled frontend app in the backend server in production.
+    REFLEX_MOUNT_FRONTEND_COMPILED_APP: EnvVar[bool] = env_var(False, internal=True)
+
+    # How long to delay writing updated states to disk. (Higher values mean less writes, but more chance of lost data.)
+    REFLEX_STATE_MANAGER_DISK_DEBOUNCE_SECONDS: EnvVar[float] = env_var(2.0)
+
+    # How long to wait between automatic reload on frontend error to avoid reload loops.
+    REFLEX_AUTO_RELOAD_COOLDOWN_TIME_MS: EnvVar[int] = env_var(10_000)
+
+    # Whether to enable debug logging for the redis state manager.
+    REFLEX_STATE_MANAGER_REDIS_DEBUG: EnvVar[bool] = env_var(False)
+
+    # Whether to opportunistically hold the redis lock to allow fast in-memory access while uncontended.
+    REFLEX_OPLOCK_ENABLED: EnvVar[bool] = env_var(False)
+
 
 environment = EnvironmentVariables()
 
@@ -677,13 +753,11 @@ def _paths_from_env_files(env_files: str) -> list[Path]:
     """
     # load env files in reverse order
     return list(
-        reversed(
-            [
-                Path(path)
-                for path_element in env_files.split(os.pathsep)
-                if (path := path_element.strip())
-            ]
-        )
+        reversed([
+            Path(path)
+            for path_element in env_files.split(os.pathsep)
+            if (path := path_element.strip())
+        ])
     )
 
 
