@@ -1,4 +1,3 @@
-import pydantic.v1
 import pytest
 
 import reflex as rx
@@ -53,7 +52,7 @@ class ForEachState(BaseState):
     bad_annotation_list: list = [["red", "orange"], ["yellow", "blue"]]
     color_index_tuple: tuple[int, str] = (0, "red")
 
-    default_factory_list: list[ForEachTag] = pydantic.v1.Field(default_factory=list)
+    default_factory_list: rx.Field[list[ForEachTag]] = rx.field(default_factory=list)
 
     optional_list: rx.Field[list[str] | None] = rx.field(None)
     optional_list_value: rx.Field[list[str] | None] = rx.field(["red", "yellow"])
@@ -171,28 +170,28 @@ def display_color_index_tuple(color):
             ForEachState.primary_color,
             display_primary_colors,
             {
-                "iterable_state": f"Object.entries({ForEachState.get_full_name()}.primary_color{FIELD_MARKER})",
+                "iterable_state": f"Object.entries({ForEachState.get_full_name()}.primary_color{FIELD_MARKER} ?? {{}})",
             },
         ),
         (
             ForEachState.color_with_shades,
             display_color_with_shades,
             {
-                "iterable_state": f"Object.entries({ForEachState.get_full_name()}.color_with_shades{FIELD_MARKER})",
+                "iterable_state": f"Object.entries({ForEachState.get_full_name()}.color_with_shades{FIELD_MARKER} ?? {{}})",
             },
         ),
         (
             ForEachState.nested_colors_with_shades,
             display_nested_color_with_shades,
             {
-                "iterable_state": f"Object.entries({ForEachState.get_full_name()}.nested_colors_with_shades{FIELD_MARKER})",
+                "iterable_state": f"Object.entries({ForEachState.get_full_name()}.nested_colors_with_shades{FIELD_MARKER} ?? {{}})",
             },
         ),
         (
             ForEachState.nested_colors_with_shades,
             display_nested_color_with_shades_v2,
             {
-                "iterable_state": f"Object.entries({ForEachState.get_full_name()}.nested_colors_with_shades{FIELD_MARKER})",
+                "iterable_state": f"Object.entries({ForEachState.get_full_name()}.nested_colors_with_shades{FIELD_MARKER} ?? {{}})",
             },
         ),
         (
