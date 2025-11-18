@@ -417,15 +417,21 @@ def create_document_root(
         *maybe_head_components,
         *always_head_components,
     ]
-    # return Html.create(
-    return Main.create(
-            *head_components,
+    html_component = Html.create(
+        Head.create(*head_components),
+        Body.create(
             Var("children"),
             ScrollRestoration.create(),
             Scripts.create(),
-        )
-        #lang=html_lang or "en",
-        #custom_attrs=html_custom_attrs or {}
+        ),
+        lang=html_lang or "en",
+        custom_attrs=html_custom_attrs or {},
+    )
+    hooks = html_component._get_all_hooks()
+    if hooks:
+        msg = "You cannot use stateful components or hooks in the document root. Check your head components."
+        raise ValueError(msg)
+    return html_component
 
 
 def create_theme(style: ComponentStyle) -> dict:
